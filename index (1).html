@@ -1,0 +1,83 @@
+<!doctype html><html lang="bn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Earnova</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{--bg:#f5f2ff;--cd:#fff;--tx:#1e1b3a;--mu:#6b6890;--p:#6d3fdc;--p2:#8452ee;--ok:#16a34a;--bad:#dc2626;--bd:#e6e0fb}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--tx);font:15px system-ui,sans-serif}
+#app{max-width:480px;margin:auto;padding:14px 14px 100px}
+h2{margin:6px 0 14px;font-size:22px}.card{background:var(--cd);border:1px solid var(--bd);border-radius:20px;padding:16px;margin-bottom:12px}
+.bal{background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;border-radius:22px;padding:20px;margin-bottom:14px}.bal b{font-size:34px;display:block;margin:6px 0}
+.btn{display:block;width:100%;border:0;border-radius:16px;padding:14px;background:var(--p);color:#fff;font-size:16px;font-weight:600;cursor:pointer}.btn.s{width:auto;padding:8px 12px;font-size:13px;border-radius:12px;display:inline-block}.btn.g{background:var(--ok)}.btn.r{background:var(--bad)}.btn.t{background:#0088cc}
+input{width:100%;padding:12px;border-radius:14px;border:1px solid var(--bd);background:var(--cd);color:var(--tx);font-size:15px;margin:4px 0}
+.row{display:flex;gap:8px;align-items:center;justify-content:space-between}.row>*{flex:1}.mu{color:var(--mu);font-size:13px}.c{text-align:center}
+.opt{border:2px solid var(--bd);border-radius:16px;padding:12px;text-align:center;background:var(--cd);cursor:pointer}.opt.on{border-color:var(--p);background:rgba(109,63,220,.12)}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--p);display:flex;justify-content:space-around;padding:10px 4px calc(10px + env(safe-area-inset-bottom,0px));border-radius:24px 24px 0 0;max-width:480px;margin:auto}
+nav a{color:#fff;opacity:.6;font-size:12px;text-align:center;flex:1;cursor:pointer}nav a.on{opacity:1;font-weight:700}nav a i{display:block;font-style:normal;font-size:20px}
+.tabs{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto}.tabs span{padding:8px 12px;border-radius:12px;background:var(--cd);border:1px solid var(--bd);white-space:nowrap;cursor:pointer}.tabs .on{background:var(--p);color:#fff}
+.tag{font-size:12px;padding:3px 8px;border-radius:10px;background:var(--bd);cursor:pointer}.ok{color:var(--ok)}.bad{color:var(--bad)}
+#ov{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;z-index:9;text-align:center}
+#toast{position:fixed;top:12px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:10px 16px;border-radius:14px;z-index:10;display:none}
+.ring{display:block;margin:auto}
+</style></head><body><div id="app"><p class="c mu">লোড হচ্ছে…</p></div><div id="toast"></div>
+<script>
+const ADMIN='8419447834',BOT='Earnova_Earn_Bot',APP='app';
+const CFG={apiKey:"AIzaSyCFLNBbMQvcwRv5Xo0pDxSEJtwMbYp86lY",authDomain:"profitora-969f2.firebaseapp.com",projectId:"profitora-969f2",storageBucket:"profitora-969f2.firebasestorage.app",messagingSenderId:"1043381555455",appId:"1:1043381555455:web:016745ab01e6469ed07cca"};
+const tg=window.Telegram&&Telegram.WebApp;let FB,db,uid;
+let S={tab:'home',adm:'users',users:[],tasks:[],set:{adReward:.1,dailyLimit:20,refBonus:5,channel:'https://t.me/'},wd:[],allWd:[],pend:{},ad:0,m:'',a:-1,n:'',admin:false};
+const F=[{a:35,c:5},{a:60,c:10},{a:100,c:10}],$=id=>document.getElementById(id),today=()=>new Date().toISOString().slice(0,10),mo=n=>'৳'+(+n).toFixed(2);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const me=()=>S.users.find(u=>u.id==uid)?.d,D=(c,id)=>FB.doc(db,c,id),upd=p=>FB.updateDoc(D('users',uid),p),uu=(id,p)=>FB.updateDoc(D('users',id),p);
+function toast(t){const e=$('toast');e.textContent=t;e.style.display='block';setTimeout(()=>e.style.display='none',2200)}
+function go(u){/t\.me\//.test(u)&&tg?.openTelegramLink?tg.openTelegramLink(u):tg?.openLink?tg.openLink(u):window.open(u,'_blank')}
+function items(id){return id==uid?S.wd:(S.allWd.find(x=>x.id==id)?.items||[])}
+function bal(id=uid){const u=S.users.find(x=>x.id==id)?.d||{};const r=S.users.filter(x=>x.d.refBy==id).length;const w=items(id).filter(x=>x.s!='rejected').reduce((a,x)=>a+x.a,0);return (u.earned||0)+(u.adj||0)+r*S.set.refBonus-w}
+const link=()=>`https://t.me/${BOT}/${APP}?startapp=ref_${uid}`;
+(async()=>{
+ tg?.ready();tg?.expand();
+ const tu=tg?.initDataUnsafe?.user;
+ if(!tu){$('app').innerHTML='<p class="c">অ্যাপটি Telegram বট থেকে খুলুন।</p>';return}
+ uid=String(tu.id);S.admin=uid===ADMIN;
+ FB=await import('https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js');
+ const {initializeApp}=await import('https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js');
+ db=FB.initializeFirestore(initializeApp(CFG),{experimentalForceLongPolling:true,useFetchStreams:false});
+ const s=await FB.getDoc(D('users',uid));
+ if(!s.exists()){const m=(tg.initDataUnsafe.start_param||'').match(/^ref_(\d+)/);await FB.setDoc(D('users',uid),{name:((tu.first_name||'')+' '+(tu.username?'@'+tu.username:'')).trim(),earned:0,adj:0,adsToday:0,adsDate:'',done:[],refBy:m&&m[1]!=uid?m[1]:'',banned:false,chan:false,joined:Date.now()})}
+ FB.onSnapshot(FB.collection(db,'users'),q=>{S.users=q.docs.map(d=>({id:d.id,d:d.data()}));R()});
+ FB.onSnapshot(FB.collection(db,'tasks'),q=>{S.tasks=q.docs.map(d=>({id:d.id,...d.data()}));R()});
+ FB.onSnapshot(D('settings','main'),d=>{if(d.exists())S.set={...S.set,...d.data()};R()});
+ FB.onSnapshot(D('withdrawals',uid),d=>{S.wd=d.exists()?d.data().items||[]:[];R()});
+ if(S.admin)FB.onSnapshot(FB.collection(db,'withdrawals'),q=>{S.allWd=q.docs.map(d=>({id:d.id,items:d.data().items||[]}));R()});
+})().catch(e=>{$('app').innerHTML='<p class="c bad">ত্রুটি: '+esc(e.message)+'</p>'});
+function R(){const u=me();if(!u)return;const ae=document.activeElement;if(ae&&ae.tagName=='INPUT'&&ae.id!='num')return;
+ if(u.banned&&!S.admin){$('app').innerHTML='<div class="card c">আপনার অ্যাকাউন্ট ব্যান করা হয়েছে।</div>';return}
+ const tabs=[['tasks','📋','Tasks'],['ads','▶️','Ads'],['home','🏠','Home'],['refer','👥','Refer'],['wallet','👛','Wallet']];if(S.admin)tabs.push(['admin','⚙️','Admin']);
+ const v=(!u.chan&&!S.admin)?gate():({home,tasks,ads,refer,wallet,admin})[S.tab](u);
+ $('app').innerHTML=v+(S.ad?`<div id="ov">বিজ্ঞাপন চলছে…<br>${S.ad}</div>`:'')+'<nav>'+tabs.map(t=>`<a class="${S.tab==t[0]?'on':''}" onclick="S.tab='${t[0]}';R()"><i>${t[1]}</i>${t[2]}</a>`).join('')+'</nav>'}
+function gate(){return `<h2>চ্যানেলে জয়েন করুন</h2><div class="card"><p>অ্যাপ ব্যবহার করতে আগে আমাদের চ্যানেলে জয়েন করুন।</p><button class="btn t" onclick="go('${esc(S.set.channel)}')">Join Channel</button><br><button class="btn" onclick="upd({chan:true})">জয়েন করেছি ✔ Verify</button></div>`}
+function balCard(l){return `<div class="bal"><span>${l}</span><b>${mo(bal())}</b><span style="opacity:.8">Current Balance</span></div>`}
+function home(){return `<h2>👋 স্বাগতম</h2>${balCard('Total Balance')}<div class="card"><b>Earnova</b><p class="mu">Complete tasks and earn more rewards easily.</p></div><div class="card row"><div>প্রতি অ্যাড<br><b>${mo(S.set.adReward)}</b></div><div>রেফার বোনাস<br><b>${mo(S.set.refBonus)}</b></div></div>`}
+function ads(u){const n=u.adsDate==today()?u.adsToday:0,L=S.set.dailyLimit,c=2*Math.PI*70,o=c*(1-Math.min(n/L,1));
+ return `<div class="row"><h2>Watch & Earn</h2><span class="tag">${mo(bal())}</span></div><div class="card c"><svg class="ring" width="180" height="180" viewBox="0 0 180 180"><circle cx="90" cy="90" r="70" fill="none" stroke="var(--bd)" stroke-width="14"/><circle cx="90" cy="90" r="70" fill="none" stroke="var(--p)" stroke-width="14" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${o}" transform="rotate(-90 90 90)"/><text x="90" y="92" text-anchor="middle" font-size="32" font-weight="700" fill="var(--tx)">${n}/${L}</text><text x="90" y="116" text-anchor="middle" font-size="11" fill="var(--mu)">ADS COMPLETED</text></svg><p class="mu">বিজ্ঞাপন দেখে রিং পূর্ণ করুন ও রিওয়ার্ড নিন!</p></div><div class="bal">Reward Per Ad<b>${mo(S.set.adReward)}</b></div><button class="btn" onclick="watch()">▶ Watch Ad & Earn</button>`}
+async function watch(){const u=me(),n=u.adsDate==today()?u.adsToday:0;if(n>=S.set.dailyLimit)return toast('আজকের লিমিট শেষ');if(S.ad)return;S.ad=5;R();
+ const iv=setInterval(async()=>{S.ad--;if(S.ad>0)return R();clearInterval(iv);R();await upd({adsDate:today(),adsToday:n+1,earned:+((u.earned||0)+S.set.adReward).toFixed(2)});toast('+'+mo(S.set.adReward))},1000)}
+function tasks(u){const d=u.done||[];return `<h2>Available Tasks</h2>`+(S.tasks.length?S.tasks.map(t=>{const dn=d.includes(t.id),p=S.pend[t.id];return `<div class="card"><b>${esc(t.title)}</b><div class="mu">Reward: ${mo(t.reward)}</div><br>`+(dn?'<span class="ok">✔ সম্পন্ন</span>':p?`<button class="btn g" onclick="claimT('${t.id}',${t.reward})">Claim Reward</button>`:`<button class="btn" onclick="startT('${t.id}','${esc(t.url)}')">Start Task</button>`)+'</div>'}).join(''):'<div class="card c mu">এখনো কোনো টাস্ক নেই।</div>')}
+function startT(id,url){S.pend[id]=Date.now();go(url);R()}
+async function claimT(id,r){if(Date.now()-S.pend[id]<10000)return toast('টাস্ক শেষ করে আবার চাপুন');const u=me();delete S.pend[id];await upd({done:[...(u.done||[]),id],earned:+((u.earned||0)+r).toFixed(2)});toast('+'+mo(r))}
+function refer(){const k=S.users.filter(x=>x.d.refBy==uid).length,l=link(),e=encodeURIComponent(l);
+ return `<h2>রেফার এবং ইনকাম</h2><div class="row"><div class="card">Total Refers<br><b style="font-size:26px">${k}</b></div><div class="card">Refer Bonus<br><b style="font-size:26px">${mo(S.set.refBonus)}</b></div></div><div class="card"><b>আপনার রেফারেল লিংক</b><p class="mu">বন্ধুরা আপনার লিংকে যুক্ত হলে পাবেন ${mo(S.set.refBonus)} বোনাস!</p><input id="rl" readonly value="${esc(l)}"><button class="btn" onclick="cp()">Copy</button><br><div class="row"><button class="btn t" onclick="go('https://t.me/share/url?url=${e}')">Telegram</button><button class="btn g" onclick="go('https://wa.me/?text=${e}')">WhatsApp</button></div></div><div class="card mu">১. লিংক শেয়ার করুন<br>২. বন্ধুরা জয়েন করবে<br>৩. আপনি বোনাস পাবেন</div>`}
+function cp(){const i=$('rl');i.select();navigator.clipboard?.writeText(i.value).then(()=>toast('কপি হয়েছে')).catch(()=>{document.execCommand('copy');toast('কপি হয়েছে')})}
+function wallet(){return `<div class="row"><h2>Withdraw</h2><span class="tag" onclick="S.hist=!S.hist;R()" style="flex:0;white-space:nowrap">🕘 History</span></div>`+(S.hist?hist():`${balCard('Available Balance')}<p><b>১. পেমেন্ট মেথড</b></p><div class="row">${['Nagad','BKash'].map(m=>`<div class="opt ${S.m==m?'on':''}" onclick="S.m='${m}';R()">${m}</div>`).join('')}</div><p><b>২. অ্যাকাউন্ট নাম্বার</b></p><input id="num" value="${esc(S.n)}" oninput="S.n=this.value" placeholder="01XXXXXXXXX" inputmode="numeric"><p><b>৩. পরিমাণ</b></p><div class="row">${F.map((f,i)=>`<div class="opt ${S.a==i?'on':''}" onclick="S.a=${i};R()"><b>৳ ${f.a}</b><div class="bad" style="font-size:12px">চার্জ: ৳ ${f.c}</div></div>`).join('')}</div><br><button class="btn" onclick="wdr()">Withdraw</button>`)}
+function hist(){return `<span class="tag" onclick="S.hist=0;R()">← Back</span><br><br>`+(S.wd.length?S.wd.map(x=>`<div class="card"><div class="row"><b>${x.m}</b><span class="${x.s=='approved'?'ok':x.s=='rejected'?'bad':''}" style="text-align:right">${x.s}</span></div><div class="mu">Number: ${esc(x.n)}<br>Charge: ${mo(x.c)} | Net: ${mo(x.a-x.c)}<br>${new Date(x.t).toLocaleString()}</div><b>৳${x.a}</b></div>`).join(''):'<div class="card c mu">কোনো হিস্ট্রি নেই</div>')}
+async function wdr(){const f=F[S.a],n=S.n.trim();if(!S.m||!f)return toast('মেথড ও পরিমাণ বাছুন');if(!/^01\d{9}$/.test(n))return toast('সঠিক নাম্বার দিন');if(bal()<f.a)return toast('ব্যালেন্স অপর্যাপ্ত');
+ await FB.setDoc(D('withdrawals',uid),{items:[{id:Date.now()+'',m:S.m,n,a:f.a,c:f.c,s:'pending',t:Date.now()},...S.wd]});S.hist=1;S.a=-1;toast('আবেদন জমা হয়েছে')}
+function admin(){const t=[['users','Users'],['wd','Withdraws'],['tasks','Tasks'],['set','Settings']];
+ return `<h2>Admin Panel</h2><div class="tabs">${t.map(x=>`<span class="${S.adm==x[0]?'on':''}" onclick="S.adm='${x[0]}';R()">${x[1]}</span>`).join('')}</div>`+({users:aUsers,wd:aWd,tasks:aTasks,set:aSet})[S.adm]()}
+function aUsers(){return `<p class="mu">মোট ইউজার: ${S.users.length}</p>`+S.users.map(x=>`<div class="card"><div class="row"><b>${esc(x.d.name||x.id)}</b><span style="text-align:right">${mo(bal(x.id))}</span></div><div class="mu">ID: ${x.id} | রেফার: ${S.users.filter(y=>y.d.refBy==x.id).length} | চ্যানেল: ${x.d.chan?'✔':'✘'} ${x.d.banned?'<span class="bad">BANNED</span>':''}</div><div class="row"><input id="adj-${x.id}" placeholder="+/- টাকা" inputmode="decimal"><button class="btn s" onclick="adj('${x.id}')">Adjust</button><button class="btn s ${x.d.banned?'g':'r'}" onclick="uu('${x.id}',{banned:${!x.d.banned}})">${x.d.banned?'Unban':'Ban'}</button></div></div>`).join('')}
+function adj(id){const v=parseFloat($('adj-'+id).value);if(isNaN(v))return;uu(id,{adj:+((S.users.find(x=>x.id==id).d.adj||0)+v).toFixed(2)});toast('আপডেট হয়েছে')}
+function aWd(){const r=[];S.allWd.forEach(d=>d.items.forEach(i=>r.push({...i,uid:d.id})));r.sort((a,b)=>(a.s=='pending'?0:1)-(b.s=='pending'?0:1)||b.t-a.t);
+ return r.length?r.map(x=>`<div class="card"><div class="row"><b>${x.m} ${esc(x.n)}</b><span class="tag">${x.s}</span></div><div class="mu">${esc(S.users.find(u=>u.id==x.uid)?.d.name||x.uid)} • ৳${x.a} (নেট ${mo(x.a-x.c)}) • ${new Date(x.t).toLocaleString()}</div>`+(x.s=='pending'?`<br><div class="row"><button class="btn s g" onclick="wdSet('${x.uid}','${x.id}','approved')">Approve</button><button class="btn s r" onclick="wdSet('${x.uid}','${x.id}','rejected')">Reject</button></div>`:'')+'</div>').join(''):'<div class="card c mu">কোনো রিকোয়েস্ট নেই</div>'}
+function wdSet(u,id,s){FB.setDoc(D('withdrawals',u),{items:items(u).map(i=>i.id==id?{...i,s}:i)})}
+function aTasks(){return `<div class="card"><input id="tt" placeholder="টাস্কের নাম"><input id="tr" placeholder="রিওয়ার্ড (৳)" inputmode="decimal"><input id="tu" placeholder="https://লিংক"><button class="btn" onclick="addT()">Add Task</button></div>`+S.tasks.map(t=>`<div class="card row"><div><b>${esc(t.title)}</b><div class="mu">${mo(t.reward)}</div></div><button class="btn s r" style="flex:0" onclick="FB.deleteDoc(D('tasks','${t.id}'))">Delete</button></div>`).join('')}
+function addT(){const t=$('tt').value.trim(),r=parseFloat($('tr').value),u=$('tu').value.trim();if(!t||isNaN(r)||!/^https?:\/\//.test(u))return toast('সব ঘর সঠিক দিন');FB.setDoc(D('tasks','t'+Date.now()),{title:t,reward:r,url:u});['tt','tr','tu'].forEach(i=>$(i).value='')}
+function aSet(){const s=S.set;return `<div class="card"><p class="mu">প্রতি অ্যাড রিওয়ার্ড</p><input id="s1" value="${s.adReward}"><p class="mu">দৈনিক অ্যাড লিমিট</p><input id="s2" value="${s.dailyLimit}"><p class="mu">রেফার বোনাস</p><input id="s3" value="${s.refBonus}"><p class="mu">চ্যানেল লিংক</p><input id="s4" value="${esc(s.channel)}"><button class="btn" onclick="saveS()">Save</button></div>`}
+function saveS(){FB.setDoc(D('settings','main'),{adReward:+$('s1').value,dailyLimit:+$('s2').value,refBonus:+$('s3').value,channel:$('s4').value.trim()}).then(()=>toast('সেভ হয়েছে'))}
+</script></body></html>
